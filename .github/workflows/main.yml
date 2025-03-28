@@ -1,0 +1,43 @@
+name: Sync Fork
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 每天 UTC 00:00 (北京时间 08:00) 运行
+
+  workflow_dispatch:  # 手动触发工作流
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Add Remote
+        run: git remote add upstream https://github.com/ivy-llc/ivy.git
+
+      - name: Fetch Upstream
+        run: git fetch upstream
+
+      - name: Merge Upstream
+        run: |
+          git checkout main  # 修改为你的默认分支
+          git merge --no-ff upstream/main  # 修改为你的默认分支， 使用 --no-ff 确保总是创建合并提交
+        continue-on-error: true # 即使 merge 失败也继续执行
+
+      - name: Push Changes
+        run: git push
+        if: success() # 只有在 merge 成功时才推送
+
+      - name: Resolve Merge Conflicts (if any)
+        if: failure() # 如果 merge 失败
+        run: |
+          echo "Merge conflicts occurred.  Please resolve them manually."
+          exit 1 # 退出 workflow
